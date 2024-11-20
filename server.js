@@ -2,27 +2,35 @@ const express = require("express");
 const bodyParser = require("body-parser");
 
 const app = express();
-const port = 3001;  // Port สำหรับรับข้อมูลจาก ESP32
+const port = 3001;  // Express port
 
-let temperature = null;  // ตัวแปรเก็บข้อมูลอุณหภูมิ
+let temperature = null; // สร้างตัวแปรข้อมูลอุณหภูมิ
 
-// Middleware สำหรับแปลงข้อมูล JSON
+// Middleware แปลงข้อมูล JSON
 app.use(bodyParser.json());
 
-// Route สำหรับรับข้อมูลจาก ESP32
+// API POST สำหรับ ESP32 ให้ส่งข้อมูลเข้ามา
 app.post("/updateTemperature", (req, res) => {
   const temp = req.body.temperature;
-  temperature = temp;
-  console.log(`Received temperature: ${temperature}`);
-  res.status(200).send("Data received");
+  if (temp !== undefined) {
+    temperature = temp;
+    console.log(`Received temperature: ${temperature}`);
+    res.status(200).send("Data received");
+  } else {
+    console.log("Temperature data is missing");
+    res.status(400).send("Temperature data is missing");
+  }
 });
 
-// Route สำหรับให้ React Web ดึงข้อมูลอุณหภูมิ
+// API สำหรับ React web ให้ดึงข้อมูลจาก Express ไปใช้
 app.get("/getTemperature", (req, res) => {
-  res.json({ temperature: temperature });
+  if (temperature !== null) {
+    res.json({ temperature: temperature });
+  } else {
+    res.status(404).send("Temperature data not available");
+  }
 });
-
-// เริ่มต้น Express Server
+// เปิดใช้งาน Express พร้อมแสดงข้อความ
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
