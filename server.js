@@ -49,10 +49,6 @@ app.get("/getTemperature", (req, res) => {
     res.status(404).send("Temperature data not available");
   }
 });
-// เปิดใช้งาน Express พร้อมแสดงข้อความ
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
 
 app.get("/getHumidity", (req, res) => {
   if (humidity !== null) {
@@ -61,7 +57,9 @@ app.get("/getHumidity", (req, res) => {
     res.status(404).send("Humidity data not available");
   }
 });
+
 // เปิดใช้งาน Express พร้อมแสดงข้อความ
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
+
