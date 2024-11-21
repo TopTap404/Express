@@ -1,5 +1,6 @@
 const express = require("express");
 const bodyParser = require("body-parser");
+const cors = require("cors");
 
 const app = express();
 const port = 3001;  // Express port
@@ -8,6 +9,10 @@ let temperature = null; // สร้างตัวแปรข้อมูล�
 
 // Middleware แปลงข้อมูล JSON
 app.use(bodyParser.json());
+
+app.use(cors({
+  origin: 'http://104.214.177.30'
+}));
 
 // API POST สำหรับ ESP32 ให้ส่งข้อมูลเข้ามา
 app.post("/updateTemperature", (req, res) => {
