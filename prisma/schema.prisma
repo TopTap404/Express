@@ -3,13 +3,13 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider          = "sqlserver" // ใช้ SQL Server
+  url               = env("DATABASE_URL") // ระบุ URL การเชื่อมต่อ
 }
 
 model user_accout {
   id        Int      @id @default(autoincrement())
   email     String   @unique
-  password  String   @db.VarChar(255)
+  password  String
   createdAt DateTime @default(now())
 }

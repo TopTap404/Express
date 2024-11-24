@@ -3,6 +3,7 @@ const bodyParser = require("body-parser");
 const cors = require("cors");
 const { PrismaClient } = require('@prisma/client')
 const bcrypt = require('bcrypt');
+const morgan = require('morgan')
 
 const app = express();
 const prisma = new PrismaClient();
@@ -12,10 +13,11 @@ let temperature = null; // สร้างตัวแปรข้อมูล�
 let humidity = null;
 
 // Middleware แปลงข้อมูล JSON
+app.use(morgan('dev'))
 app.use(bodyParser.json());
 
 app.use(cors({
-  origin: 'http://104.214.176.253'
+  origin: '*'
 }));
 
 // API POST สำหรับ ESP32 ให้ส่งข้อมูลเข้ามา
