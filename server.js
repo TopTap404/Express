@@ -1,23 +1,43 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const { PrismaClient } = require('@prisma/client')
 const bcrypt = require('bcrypt');
 const morgan = require('morgan')
+const sql = require('mssql');
 
 const app = express();
-const prisma = new PrismaClient();
 const port = 3001;  // Express port
+
+const config = {
+  user: 'siravit',
+  password: 'Belllovecpe01',
+  server: 'belldatabase.database.windows.net',
+  database: 'belldatabase',
+  options: {
+    encrypt: true, // ใช้การเข้ารหัส
+    trustServerCertificate: false, // ควรตั้งเป็น false เพื่อความปลอดภัย
+  }
+};
 
 let temperature = null; // สร้างตัวแปรข้อมูลอุณหภูมิ
 let humidity = null;
+
+async function connectDB() {
+  try {
+    const pool = await sql.connect(config);
+    return pool;
+  } catch (err) {
+    console.error('Database connection error:', err);
+    throw new Error('Database connection error');
+  }
+}
 
 // Middleware แปลงข้อมูล JSON
 app.use(morgan('dev'))
 app.use(bodyParser.json());
 
 app.use(cors({
-  origin: 'http://104.214.176.253/'
+  origin: '*'
 }));
 
 // API POST สำหรับ ESP32 ให้ส่งข้อมูลเข้ามา
@@ -62,59 +82,72 @@ app.get("/getHumidity", (req, res) => {
   }
 });
 
-// เปิดใช้งาน Express พร้อมแสดงข้อความ
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
-});
-
 app.post('/register', async (req, res) => {
+  const { email, password } = req.body;
+  
+  if (!email || !password) {
+    return res.status(400).json({ message: 'email and password are required' });
+  }
+
   try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ error: 'All fields are required.' });
+    const pool = await connectDB();
+    const existingUser = await pool.request()
+      .input('email', sql.NVarChar, email)
+      .query('SELECT * FROM Users WHERE email = @email');
+    
+    if (existingUser.recordset.length > 0) {
+      return res.status(400).json({ message: 'email already exists' });
     }
 
-    const existingUser = await prisma.user_accout.findUnique({
-      where: { email: email },
-    });
+    const salt = await bcrypt.genSalt(10); // ใช้แบบ asynchronous
+    const passwordHash = await bcrypt.hash(password, salt); // ใช้แบบ asynchronous
 
-    if (existingUser) {
-      return res.status(400).json({ error: 'Email already exists.' });
-    }
+    await pool.request()
+      .input('email', sql.NVarChar, email)
+      .input('password_hash', sql.NVarChar, passwordHash)
+      .query('INSERT INTO Users (email, password_hash) VALUES (@email, @password_hash)');
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const newUser = await prisma.user_accout.create({
-      data: {
-        email: email,
-        password: hashedPassword,
-      },
-    });
-
-    res.status(201).json({ message: 'User registered successfully.', user: newUser });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal server error.' });
+    res.status(201).json({ message: 'User registered successfully' });
+  } catch (err) {
+    console.error('Registration error:', err);
+    res.status(500).json({ message: 'Server error' });
   }
 });
+
 
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
-  const user = await prisma.user_accout.findUnique({
-    where: { email: email }
-  });
-
-  if (!user) {
-    return res.status(400).json({ message: 'User not found' });
+  if (!email || !password) {
+    return res.status(400).json({ message: 'email and password are required' });
   }
 
-  const isPasswordValid = await bcrypt.compare(password, user.password);
+  try {
+    const pool = await connectDB();
+    const user = await pool.request()
+      .input('email', sql.NVarChar, email)
+      .query('SELECT * FROM Users WHERE email = @email');
 
-  if (!isPasswordValid) {
-    return res.status(401).json({ message: 'Invalid password' });
+    if (user.recordset.length === 0) {
+      return res.status(400).json({ message: 'User not found' });
+    }
+
+    const storedPasswordHash = user.recordset[0].password_hash;
+    
+    // ตรวจสอบรหัสผ่านแบบ asynchronous
+    const isPasswordValid = await bcrypt.compare(password, storedPasswordHash);
+    if (!isPasswordValid) {
+      return res.status(400).json({ message: 'Invalid password' });
+    }
+
+    res.status(200).json({ message: 'Login successful' });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ message: 'Server error' });
   }
+});
 
-  res.json({ message: 'Login successful' });
+// เปิดใช้งาน Express พร้อมแสดงข้อความ
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
 });
