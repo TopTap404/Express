@@ -17,7 +17,7 @@ app.use(morgan('dev'))
 app.use(bodyParser.json());
 
 app.use(cors({
-  origin: '*'
+  origin: 'http://104.214.176.253/'
 }));
 
 // API POST สำหรับ ESP32 ให้ส่งข้อมูลเข้ามา
